@@ -129,3 +129,9 @@ dmypy.json
 .pyre/
 .idea
 exe.cs
+
+*.bin
+
+test.rbl
+
+test_.rbl
