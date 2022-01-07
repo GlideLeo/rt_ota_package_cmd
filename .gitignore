@@ -135,3 +135,5 @@ exe.cs
 test.rbl
 
 test_.rbl
+ota_packager
+*.rbl
