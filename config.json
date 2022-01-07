@@ -1,0 +1,10 @@
+{
+  "FirmwarePath" : "./test.bin",
+  "RBLPath" : "./test.rbl",
+  "CompressionAlgorithm" : "",
+  "EncryptionAlgorithm" : "AES256",
+  "EncryptionKey" : "0123456789ABCDEF0123456789ABCDEF",
+  "EncryptionIV" : "0123456789ABCDEF",
+  "FirmwarePartitionName" : "app",
+  "FirmwareVersion" : "300"
+}
