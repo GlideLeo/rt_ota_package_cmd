@@ -80,7 +80,9 @@ class Fnv1a:
         return hash_value
 ```
 
-
+## 测试
+在**未压缩|AES256加密**配置下，输出的二进制文件与官方版本完全一致，对比结果如下：
+![](https://qiniu.datasheep.cn/comp.gif)
 
 ## 注意
 
