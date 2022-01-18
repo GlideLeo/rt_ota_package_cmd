@@ -6,12 +6,14 @@
 
 此程序主要用于自动化打包，通过修改脚本即可简单完成定制化。开发的主要的原因是需要同时编译不同版本固件并且完成打包，手动使用官方程序打包非常不方便，而且比较费时。
 
-**官方版的压缩功能在此版本中尚未被支持**
+目前支持：**不压缩|不加密、不压缩|AES256加密、gzip压缩|不加密、gzip压缩|AES256加密**四种配置
 
-> 建议搭配[基于 STM32 的开源 Bootloader 框架 - RT-FOTA](https://gitee.com/spunky_973/rt-fota)使用，或者查看[基于RTT完整版的移植版本](https://github.com/JassyL/STM32-RTThread-BootLoader)，但此bootloader的解压功能似乎有问题，所以暂未使用压缩功能。
+> 建议搭配[基于 STM32 的开源 Bootloader 框架 - RT-FOTA](https://gitee.com/spunky_973/rt-fota)使用，或者查看[基于RTT完整版的移植版本](https://github.com/JassyL/STM32-RTThread-BootLoader)，但此bootloader的解压功能似乎有问题，所以暂未使用压缩功能，但未作更多的测试，建议使用'未压缩|AES256加密'配置
+>
+> 或者搭配**[rt-thread-qboot](https://github.com/qiyongzhong0/rt-thread-qboot)**,此版本的 bootloader 在 ART-PI H750 开发板上通过测试。
 
 ## 使用
-使用的`python`版本为3.9，主要依赖：
+使用的`python`版本为3.9，需要添加依赖：
 
 ```shell
 pip install pycryptodome
@@ -26,6 +28,25 @@ pip install pycryptodome
 其中`test.bin`需要自行准备固件，`RBLPath`为保存路径，加密和压缩算法参考源文件内定义，其余参数参考官方配置,运行效果如下：
 
 ![package](https://qiniu.datasheep.cn/package.gif)
+
+## gzip 压缩支持
+使用 python 的 gzip 包完成压缩，并与官方版本作二进制比较，测试将压缩等级设置为 6,则与官方版本效果相同，但数据头有一些差别，如图所示：
+
+![image-20220119014416668](https://qiniu.datasheep.cn/image-20220119014416668.png)
+
+可以看出来数据基本一致，其中有2个连接的4字节不一样是因为后边压缩文件不一致导致 CRC 结果不一致，实际上数据只有6个字节不一致，而且测试不同文件打包后都是差这几个字节。
+
+由于并不了解 gzip，解决这个问题花了很多时间，最终找到 rfc1952 标准才找到问题的原因。压缩后的文件头组成如下：
+
+![image-20220119014902195](https://qiniu.datasheep.cn/image-20220119014902195.png)
+
+对比上一张图的数据，0x1f,0x8b 分别对应 ID1,ID2等等，重点在于差异部分，MTIME 占4字节，组成时间戳表示最后修改时间，官方版本打包后这4个字节均为0,而我使用 python 脚本打包后这4个字节是准确的时间戳，所以导致不一致。04 表示使用最快的算法，00表示FAT filesystem (MS-DOS, OS/2, NT/Win32),这些搞清楚后，将这些字节直接替换成固定的"00 00 00 00 04 00"可以解决差异。
+
+![image-20220119015333234](https://qiniu.datasheep.cn/image-20220119015333234.png)
+
+完成后测试，gzip 压缩率还是很可观的：
+
+![image-20220119040447033](https://qiniu.datasheep.cn/image-20220119040447033.png)
 
 ## 说明
 
@@ -81,18 +102,14 @@ class Fnv1a:
 ```
 
 ## 测试
-在**未压缩|AES256加密**配置下，输出的二进制文件与官方版本完全一致，对比结果如下：
+在**支持的四种配置**下，输出的二进制文件与官方版本完全一致，对比结果如下：
 ![](https://qiniu.datasheep.cn/comp.gif)
 
 ## 注意
 
-### 支持配置
-
-目前仅支持**未压缩|AES256加密**
-
-### 时间戳参数
+### RBL头 时间戳参数
 原版使用6个字节，此版本只使用4个字节，最多表示到`2106-02-07 14:28:15`
 
 ## TODO
 - [ ] 参数检查
-- [ ] 压缩算法
+- [x] 压缩算法

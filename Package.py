@@ -7,10 +7,10 @@ import time
 import os
 import zlib
 import struct
+import gzip
 
-algorithm_code = {'RT_OTA_CRYPT_ALGO_NONE': 0, 'RT_OTA_CRYPT_ALGO_XOR': 1,
-                  'RT_OTA_CRYPT_ALGO_AES256': 2, 'RT_OTA_CMPRS_ALGO_GZIP': 256,
-                  'RT_OTA_CMPRS_ALGO_QUICKLZ': 512, 'RT_OTA_CMPRS_ALGO_FASTLZ': 768}
+algorithm_code = {'RT_OTA_CRYPT_ALGO_NONE': 0, 'RT_OTA_CRYPT_ALGO_AES256': 2,
+                  'RT_OTA_CMPRS_ALGO_GZIP': 256, 'RT_OTA_CMPRS_ALGO_GZIP_AES256': 258}
 
 
 # 输出十六进制类型数组
@@ -34,7 +34,6 @@ class RblHeader:
         self.info_crc32 = 0
 
     def get_rbl_header(self):
-
         header = struct.pack('<4B2HI16s24s24s4I', 82, 66, 76, 0, algorithm_code[self.algorithm], 0, int(self.timestamp),
                              self.firmware_partition_name.encode("utf-8"),
                              self.firmware_version.encode("utf-8"), self.sn.encode("utf-8"),
@@ -78,6 +77,17 @@ class Package:
         pad_data = pad(data, 16, style='pkcs7')
         return cipher.encrypt(pad_data)
 
+    def gzip_compress(self, data):
+        result = gzip.compress(data, compresslevel=6)
+        with open('./temp_file.bin', 'wb+') as temp_write:
+            temp_write.write(result)
+            temp_write.seek(0x04, 0)
+            temp_write.write(b'\x00\x00\x00\x00\x04\x00')
+        with open('./temp_file.bin', 'rb') as temp_read:
+            result = temp_read.read()
+        os.remove('./temp_file.bin')
+        return result
+
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description='rt ota packaging tool CMD')
@@ -98,7 +108,15 @@ if __name__ == "__main__":
         print('firmware raw data hash value is : %#x' % package.rbl_hdr.hash)
         package.rbl_hdr.timestamp = os.path.getmtime(package.config['FirmwarePath'])
         print('firmware last edit time is : %#d' % package.rbl_hdr.timestamp)
-        out_data = package.encrypt(raw_data)
+        if package.config['CompressionEncryptionAlgorithm'] == 'RT_OTA_CRYPT_ALGO_NONE':
+            out_data = raw_data
+        if package.config['CompressionEncryptionAlgorithm'] == 'RT_OTA_CRYPT_ALGO_AES256':
+            out_data = package.encrypt(raw_data)
+        if package.config['CompressionEncryptionAlgorithm'] == 'RT_OTA_CMPRS_ALGO_GZIP':
+            out_data = package.gzip_compress(raw_data)
+        if package.config['CompressionEncryptionAlgorithm'] == 'RT_OTA_CMPRS_ALGO_GZIP_AES256':
+            out_data = package.gzip_compress(raw_data)
+            out_data = package.encrypt(out_data)
         package.rbl_hdr.crc32 = zlib.crc32(out_data)
         print('out_data crc32 is : %#x' % package.rbl_hdr.crc32)
         package.rbl_hdr.size_package = len(out_data)
@@ -112,5 +130,5 @@ if __name__ == "__main__":
         print_hex(package.rbl_hdr.get_rbl_header())
         rbl = open(package.config['RBLPath'], 'wb+')
         rbl.write(package.rbl_hdr.get_rbl_header())
-        rbl.write(package.encrypt(raw_data))
+        rbl.write(out_data)
         rbl.close()

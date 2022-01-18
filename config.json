@@ -1,9 +1,9 @@
 {
   "FirmwarePath" : "./test.bin",
   "RBLPath" : "./test_cmd.rbl",
-  "CompressionEncryptionAlgorithm" : "RT_OTA_CRYPT_ALGO_AES256",
+  "CompressionEncryptionAlgorithm" : "RT_OTA_CMPRS_ALGO_GZIP_AES256",
   "EncryptionKey" : "0123456789ABCDEF0123456789ABCDEF",
   "EncryptionIV" : "0123456789ABCDEF",
   "FirmwarePartitionName" : "app",
-  "FirmwareVersion" : "1205"
+  "FirmwareVersion" : "1.0.1"
 }
